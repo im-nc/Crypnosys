@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 from pandas_datareader import data as pdr
 import yfinance as yfin
 import datetime as dt
-# from keras.models import load_model
 import streamlit as st
 import tickerlist
 import re
@@ -14,7 +13,7 @@ import requests
 import time
 import pandas_ta as ta
 import plotly.express as px
-from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import RobustScaler,MinMaxScaler
 import xgboost as xgb
 image_path = "logo.png"
 
@@ -136,8 +135,8 @@ if(df.shape[0]>=200):
     data_testing=pd.DataFrame(df['Close'][int(len(df)*0.80):int(len(df))])
 
 
-    # scaler=MinMaxScaler(feature_range=(0,1))
-    scaler=RobustScaler()
+    scaler=MinMaxScaler()
+    # scaler=RobustScaler()
 
     data_training_array = scaler.fit_transform(data_training)
 
@@ -152,7 +151,7 @@ if(df.shape[0]>=200):
 
     x_train,y_train = np.array(x_train),np.array(y_train)
 
-    model = xgb.XGBRegressor(n_estimators=170,learning_rate=0.08, max_depth=3)
+    model = xgb.XGBRegressor(n_estimators=170, learning_rate=0.04, max_depth=3)
     x_train = x_train.reshape(x_train.shape[0], -1)
     model.fit(x_train, y_train)
 
@@ -232,14 +231,14 @@ if(df.shape[0]>=200):
                             fig.update_layout(title=f'Recent Price of {user_input}',
                                             xaxis_title='Date', yaxis_title='Price',width=890,xaxis_rangeslider_visible=False,height=500,margin=dict(l=50, r=50, t=50, b=50) ) 
                                     
-                            indicator =px.line(x=data.Datetime,y=data.rsi,height =200,width=860)   
+                            indicator =px.line(x=data.Datetime,y=data.rsi,height =200,width=900)   
                             time.sleep(0.25)  
                             st.plotly_chart(fig)
                             st.plotly_chart(indicator)
                         except Exception as e:
-                            st.write("Try again with different value of Period and Interval , if its not working then we will Soon Add It ")
+                            st.write("Try again with different value of Period and Interval , if its not working then we will Soon Add It.")
                 except Exception as e: 
-                    st.write("We Will Soon Add It")
+                    st.write("We Will Soon Add It.")
                     
                         
                 y_predicted_new=[]
@@ -263,17 +262,19 @@ if(df.shape[0]>=200):
 
                 y_predicted_new=scaler.inverse_transform(y_predicted_new)
 
+                st.subheader(f'Prediction of the prices of {user_input} in next 5 days')
+                y_predicted_new1 = y_predicted_new.reshape(1,7)[0]
+
                 today = dt.date.today()
 
                 dates = [today - dt.timedelta(days=i) for i in range(2, -5, -1)]
 
-                st.subheader(f'Prediction of the prices of {user_input} in next 5 days')
-                fig=plt.figure(figsize=(12, 6))
-                plt.plot(dates, y_predicted_new, 'r', marker='o', label='Predicted Price')
-                plt.xlabel('Time')
-                plt.ylabel('Price')
-                plt.legend()
-                st.pyplot(fig)
+                data = pd.DataFrame({'Date': dates, 'Predicted Price': y_predicted_new1})
+
+                fig = px.line(data, x='Date', y='Predicted Price',width=890)
+                fig.update_traces(mode='markers+lines', hovertemplate='Date: %{x}<br>Predicted Price: %{y}')
+                fig.update_layout(xaxis_title='Date', yaxis_title='Predicted Price')
+                st.plotly_chart(fig)
                 if(y_predicted_new[2][0] > y_predicted_new[6][0]):
                     st.write(f'Crypnosys predicts these range of Price {y_predicted_new[6][0]} - {y_predicted_new[2][0]} in {user_input} for the next 5 days')
                 elif(y_predicted_new[2][0] < y_predicted_new[6][0]):
@@ -299,5 +300,3 @@ if(df.shape[0]>=200):
                 )
 else:
     st.write("Currently, information for this particular asset is not available, but rest assured, we are in the process of adding it soon. In the meantime, feel free to peruse our diverse range of other available assets.")
-
-
